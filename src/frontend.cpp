@@ -119,8 +119,11 @@ void frontendUpdate() {
         state.running = false;
         state = systemState();
     }
+    
+    static char buf[256];
+    ImGui::InputText("ROM File", buf, IM_ARRAYSIZE(buf));
     if (ImGui::Button("Load ROM")) {
-        loadIntoRAM(state.ram, "IBM Logo.ch8", 0x200);
+        loadIntoRAM(state.ram, buf, 0x200);
     }
     
     ImGui::EndDisabled();
