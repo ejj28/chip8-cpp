@@ -1,0 +1,15 @@
+[constants]
+DEVKITPRO = '/opt/devkitpro'
+DEVKITA64_PREFIX = DEVKITPRO / 'devkitA64/bin/aarch64-none-elf-'
+
+[binaries]
+c     = DEVKITA64_PREFIX + 'gcc'
+cpp   = DEVKITA64_PREFIX + 'g++'
+ar    = DEVKITA64_PREFIX + 'gcc-ar'
+strip = DEVKITA64_PREFIX + 'strip'
+
+[host_machine]
+system = 'nx'
+cpu_family = 'aarch64'
+cpu = 'armv8-a'
+endian = 'little'

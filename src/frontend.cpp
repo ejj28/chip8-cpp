@@ -7,6 +7,10 @@
 #include "imgui_impl_sdlrenderer2.h"
 #include "imgui_memory_editor.h"
 
+#ifdef __SWITCH__
+#include <switch.h>
+#endif
+
 SDL_Window* window = NULL;
 
 SDL_Renderer* renderer = NULL;
@@ -15,19 +19,36 @@ ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 bool quit = false;
 
+bool touch = false;
+
 void frontendInit() {
     
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) < 0) {
-        printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
-        throw;
-    }
+    #ifdef __SWITCH__
+
+        consoleInit(NULL);
+        // mandatory at least on switch, else gfx is not properly closed
+        if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK) < 0) {
+            SDL_Log("SDL_Init: %s\n", SDL_GetError());
+            throw;
+        }
+    #else
+        if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) < 0) {
+            printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
+            throw;
+        }
+    #endif
 
     #ifdef SDL_HINT_IME_SHOW_UI
         SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
     #endif
 
-    SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-    window = SDL_CreateWindow("Chip-8", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, window_flags);
+    #ifdef __SWITCH__
+        window = SDL_CreateWindow("sdl2_gles2", 0, 0, 1280, 720, 0);
+    #else
+        SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+        window = SDL_CreateWindow("Chip-8", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, window_flags);
+    #endif
+
     if(window == NULL) {
         printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
         throw;
@@ -50,6 +71,15 @@ void frontendInit() {
     // Setup Platform/Renderer backends
     ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer2_Init(renderer);
+
+    #ifdef __SWITCH__
+    for (int i = 0; i < 2; i++) {
+        if (SDL_JoystickOpen(i) == NULL) {
+            SDL_Quit();
+            throw;
+        }
+    }
+    #endif
     
     
 
@@ -64,6 +94,27 @@ void frontendUpdate() {
     while (SDL_PollEvent(&e)) {
         ImGui_ImplSDL2_ProcessEvent(&e);
         if (e.type == SDL_QUIT) quit = true;
+        else if (e.type == SDL_FINGERDOWN) {
+            touch = true;
+            io.AddMousePosEvent(e.tfinger.x * 1280, e.tfinger.y * 720);
+            io.AddMouseButtonEvent(0, true);
+        }
+        else if (e.type == SDL_FINGERUP) {
+            touch = false;
+            io.AddMousePosEvent(e.tfinger.x * 1280, e.tfinger.y * 720);
+            io.AddMouseButtonEvent(0, false);
+        }
+        else if (e.type == SDL_FINGERMOTION) {
+            
+            io.AddMousePosEvent(e.tfinger.x * 1280, e.tfinger.y * 720);
+        }
+        else if (e.type == SDL_JOYBUTTONDOWN) {
+            if (e.jbutton.which == 0) {
+                if (e.jbutton.button == 10) {
+                    quit = true;
+                }
+            }
+        }
     }
 
 
@@ -108,7 +159,7 @@ void frontendUpdate() {
 
     // Emulation control window
     ImGui::Begin("Emulation Control");
-    if (ImGui::Button("Start/Stop"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
+    if (ImGui::Button("Start/Stop"))
         state.running = !state.running;
     ImGui::BeginDisabled(state.running);
     if (ImGui::Button("Step")) {
@@ -123,7 +174,13 @@ void frontendUpdate() {
     static char buf[256];
     ImGui::InputText("ROM File", buf, IM_ARRAYSIZE(buf));
     if (ImGui::Button("Load ROM")) {
-        loadIntoRAM(state.ram, buf, 0x200);
+
+        // Temporary workaround since text entry is not set up for Switch yet
+        #ifdef __SWITCH__
+            loadIntoRAM(state.ram, "rom.ch8", 0x200);
+        #else
+            loadIntoRAM(state.ram, buf, 0x200);
+        #endif
     }
     
     ImGui::EndDisabled();
@@ -132,6 +189,7 @@ void frontendUpdate() {
 
     // Emulation info window
     ImGui::Begin("Emulation info");
+    ImGui::Text("Touch: %d", touch);
     ImGui::Text("Instruction:  %04x", state.currentInstruction);
     ImGui::Text("Program Counter:  %04x", state.programCounter);
     ImGui::Text("Cycle count: %d", state.cycleCount);
@@ -141,6 +199,7 @@ void frontendUpdate() {
     for (int i = 0; i <= 0xF; i++) {
         ImGui::Text("%02x: %04x", i , state.registers[i]);
     }
+    
     ImGui::End();
 
     // Render
@@ -152,6 +211,7 @@ void frontendUpdate() {
 
 
 void frontendClose() {
+    SDL_DestroyRenderer(renderer);
     //Destroy window
     SDL_DestroyWindow(window);
 

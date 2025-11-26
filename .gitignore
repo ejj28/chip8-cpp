@@ -1,6 +1,7 @@
 builddir/*
 build/*
 **imgui.ini
+**.ch8
 
 # Created by https://www.toptal.com/developers/gitignore/api/visualstudiocode,meson,ninja,visualstudio,c++,windows
 # Edit at https://www.toptal.com/developers/gitignore?templates=visualstudiocode,meson,ninja,visualstudio,c++,windows
