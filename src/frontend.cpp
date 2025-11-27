@@ -1,3 +1,7 @@
+#ifdef __PSP__
+#define IMGUI_DISABLE_DEFAULT_SHELL_FUNCTIONS
+#endif
+
 #include "frontend.h"
 #include "logic.h"
 #include <SDL.h>
@@ -42,8 +46,10 @@ void frontendInit() {
         SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
     #endif
 
-    #ifdef __SWITCH__
-        window = SDL_CreateWindow("sdl2_gles2", 0, 0, 1280, 720, 0);
+    #if defined(__SWITCH__)
+        window = SDL_CreateWindow("Chip-8", 0, 0, 1280, 720, 0);
+    #elif defined(__PSP__)
+        window = SDL_CreateWindow("Chip-8", 0, 0, 480, 272, 0);
     #else
         SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
         window = SDL_CreateWindow("Chip-8", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, window_flags);
@@ -81,7 +87,6 @@ void frontendInit() {
     }
     #endif
     
-    
 
 }
 
@@ -89,7 +94,7 @@ void frontendUpdate() {
 
     ImGuiIO&io = ImGui::GetIO();
     (void)io;
-
+    
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
         ImGui_ImplSDL2_ProcessEvent(&e);
@@ -115,6 +120,14 @@ void frontendUpdate() {
                 }
             }
         }
+        #ifdef __PSP__
+        else if (e.type == SDL_CONTROLLERDEVICEADDED) {
+            SDL_GameControllerOpen(e.cdevice.which);
+        }
+        else if (e.type == SDL_CONTROLLERBUTTONDOWN) {
+            quit = true;
+        }
+        #endif
     }
 
 

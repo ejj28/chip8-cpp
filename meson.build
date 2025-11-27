@@ -61,6 +61,47 @@ if host_machine.system() == 'nx'
                 command: [dkp_tools_bin/'elf2nro', '@INPUT@', '@OUTPUT@']
         )
 
+elif host_machine.system() == 'psp'
+        PSPDEV = '/opt/pspdev'
+        PSPDEV_SDK = PSPDEV / 'psp/sdk'
+        PSPDEV_BIN = PSPDEV / 'bin'
+
+        psp_sdk_deps = declare_dependency(
+                link_args: ['-L' + PSPDEV_SDK / 'lib', '-lstdc++', '-lpspdebug', '-lpspdisplay', '-lpspge', '-lpspgu'],
+                include_directories: include_directories(PSPDEV_SDK / 'include')
+        )
+
+        libsdl2_dep = declare_dependency(
+                link_args: ['-L' + PSPDEV / 'psp/lib', '-lSDL2', '-lSDL2main', '-lGL', '-lGLU', '-lglut', '-lz', '-lpspvfpu', '-lpsphprm', '-lpspsdk', '-lpspctrl', '-lpspumd', '-lpsprtc', '-lpsppower', '-lpspgum', '-lpspgu', '-lpspaudiolib', '-lpspaudio', '-lpsphttp', '-lpspssl', '-lpspwlan', '-lpspnet_adhocmatching', '-lpspnet_adhoc', '-lpspnet_adhocctl', '-lm', '-lpspvram'],
+                include_directories: include_directories(PSPDEV / 'psp/include/SDL2')
+        )
+
+        psp_cpp_args = ['-DIMGUI_DISABLE_DEFAULT_SHELL_FUNCTIONS', '-DPSP', '-D__PSP__', '-D_PSP_FW_VERSION=600']
+        psp_link_args = ['-L/opt/pspdev/lib', '-L/opt/pspdev/psp/lib', '-Wl,-zmax-page-size=128']
+
+        elf = executable('chip8.elf', [chip8_src, imgui_src],
+                dependencies: [psp_sdk_deps, libsdl2_dep],
+                include_directories: [PSPDEV / 'psp/include', imgui_path, imgui_path / 'backends', 'lib/imgui_club/imgui_memory_editor'],
+                cpp_args: psp_cpp_args,
+                link_args: psp_link_args
+        )
+
+        fixup = custom_target('fixup',
+                input: elf,
+                output: 'chip8.elf.fix',
+                command: [PSPDEV_BIN/'psp-fixup-imports', '-o@OUTPUT@', '@INPUT@']
+        )
+
+        mksfo = custom_target('mksfo',
+                output: 'PARAM.SFO',
+                command: [PSPDEV_BIN/'mksfoex', '-d', 'MEMSIZE=1', '-s', 'APP_VER=01.00', 'Chip8', '@OUTPUT@']
+        )
+
+        makepbp = custom_target('make-pbp',
+                input: [fixup, mksfo],
+                output: 'EBOOT.PBP',
+                command: [PSPDEV_BIN/'pack-pbp', '@OUTPUT@', mksfo, 'NULL', 'NULL', 'NULL', 'NULL', 'NULL', fixup, 'NULL']
+        )
 
 elif host_machine.system() == 'windows'
         sdl2_dep = dependency('sdl2')

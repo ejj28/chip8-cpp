@@ -3,6 +3,10 @@
 #include <list>
 #include <string>
 
+#ifdef __PSP__
+#include <psptypes.h>
+#endif
+
 const uint16_t START_ADDR = 0x200;
 
 constexpr size_t RAM_SIZE = 4096;

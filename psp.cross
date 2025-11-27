@@ -1,0 +1,15 @@
+[constants]
+PSPDEV = '/opt/pspdev'
+PSPDEV_PREFIX = PSPDEV / 'bin/psp-'
+
+[binaries]
+c     = PSPDEV_PREFIX + 'gcc'
+cpp   = PSPDEV_PREFIX + 'g++'
+ar    = PSPDEV_PREFIX + 'ar'
+strip = PSPDEV_PREFIX + 'strip'
+
+[host_machine]
+system = 'psp'
+cpu_family = 'mips'
+cpu = 'r4000'
+endian = 'little'
